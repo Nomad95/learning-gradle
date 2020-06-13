@@ -1,0 +1,36 @@
+pluginManagement {
+    plugins {
+        //all plugins versions defined in one location then we apply the plugin only by id
+        id "org.samples.examples.helloworld" version "3.17"
+        id 'org.springframework.boot' version '2.3.0.RELEASE'
+    }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.namespace == 'com.example') {
+                useModule('com.example:sample-plugins:1.0.0')
+            }
+        }
+    }
+    repositories {
+        //custom plugin repositories
+    }
+}
+
+rootProject.name = 'learning-gradle'
+include 'child-project1'
+include 'child-project2'
+include 'child-project2:grandchild1'
+
+println "We've got:"
+println rootProject.name
+println project(':child-project1').name
+println project(':child-project2').name
+println project(':child-project2:grandchild1').name
+
+println 'This is executed during the initialization phase.'
+
+//Change project propierties
+//project(':projectA').projectDir = new File(settingsDir, '../my-project-a')
+//project(':projectA').buildFileName = 'projectA.gradle'
+include 'java-project'
+

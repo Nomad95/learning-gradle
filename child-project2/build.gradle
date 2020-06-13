@@ -1,0 +1,39 @@
+plugins {
+    id 'java'
+}
+
+group 'com.igor.learninggradle'
+version '0.0.1-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    //a lib dependency
+    //A “lib” dependency is a special form of an execution dependency. It causes the other project to be
+    //built first and adds the jar with the classes of the other project to the classpath.
+    //It also adds the
+    //dependencies of the other project to the classpath.
+    implementation project(':child-project1')
+
+    //Declaring a project dependency on the project producing the properties file
+    //the consumer (child2) now declares a dependency on the outputs of the producer(child1)
+    //project.
+    runtimeOnly project(":child-project1")
+}
+
+task child2Task1 {
+    doLast {
+        println 'This is child 2 task1'
+    }
+}
+
+task child2Task2 {
+    doLast {
+        println 'This is child 2 task 2'
+    }
+}
+
+println 'configuring child2'
+

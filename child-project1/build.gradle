@@ -1,0 +1,42 @@
+group 'com.igor.learninggradle'
+version '0.0.1-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+}
+
+task someTask {
+    doLast {
+        println 'i am some task!'
+    }
+}
+
+task child1Task1 {
+    doLast {
+        println 'This is child 1 task1'
+    }
+}
+
+task child1Task2 {
+    doLast {
+        println 'This is child 1 task 2'
+    }
+}
+
+//some task that creates build info in build dir (producer)
+task buildInfo() {
+    version = project.version
+    //outputFile = file("$buildDir/generated-resources/build-info.properties")
+}
+
+//The attribute builtBy takes care of establishing an
+//inferred task dependency
+//sourceSets {
+//    main {
+//        output.dir(buildInfo.outputFile.parentFile, builtBy: buildInfo)
+//    }
+//}
+//Then goto child2

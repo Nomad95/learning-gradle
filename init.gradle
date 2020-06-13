@@ -1,0 +1,12 @@
+initscript { //dependencies of init script
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'org.apache.commons:commons-math:2.0'
+    }
+}
+
+println "I am invoked from init task!!!"
+
+// use ./gradlew --init-script init.gradle -q taskA

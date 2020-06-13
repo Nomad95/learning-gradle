@@ -1,0 +1,141 @@
+plugins {
+    id 'java'
+    id 'java-library'
+    id 'jacoco'
+    id 'groovy'
+
+}
+
+group 'com.igor.learninggradle'
+version '0.0.1-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    //for int tests
+    //Makes the intTestImplementation configuration extend from implementation, which means that
+    //all the declared dependencies of the production code also become dependencies of the
+    //integration tests
+    intTestImplementation.extendsFrom implementation
+    intTestRuntimeOnly.extendsFrom runtimeOnly
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+
+    //configuration for int tests
+    intTestImplementation 'junit:junit:4.13'
+}
+
+jar {
+    enabled = true
+
+    //modify manifest
+    manifest {
+        attributes("Implementation-Title": "Gradle",
+                "Implementation-Version": archiveVersion)
+    }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_12
+    targetCompatibility = JavaVersion.VERSION_12
+
+    //package Javadoc and source code if so desired
+    withJavadocJar()
+    withSourcesJar()
+}
+
+sourceSets {
+    main {
+        java {
+            //override
+            //srcDirs = ['src/mejn', 'src/main']
+
+            //add new dir
+            srcDir 'src/mejn'
+        }
+    }
+
+    intTest {
+        //Adds the production classes from the main source set to the compilation and runtime classpaths
+        //of the integration tests
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+
+    apis {
+        java {
+            srcDir 'src/apis/java'
+        }
+        groovy {
+            srcDir 'src/apis/groovy'
+        }
+    }
+}
+
+//add compiler options
+compileJava {
+    options.failOnError = false
+}
+
+test {
+//    filter {
+//        //filtering
+//        //includeTestsMatching "*Test"
+//    }
+    useJUnit {
+        includeCategories 'CategoryA'
+        excludeCategories 'CategoryB'
+    }
+
+    //we use tags in junit5
+//    useJUnitPlatform {
+//        includeTags 'fast'
+//        excludeTags 'slow'
+//    }
+}
+
+
+//add intTest task
+task integrationTest(type: Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+
+    testClassesDirs = sourceSets.intTest.output.classesDirs
+    classpath = sourceSets.intTest.runtimeClasspath
+    shouldRunAfter test
+}
+
+check.dependsOn integrationTest
+
+test {
+    finalizedBy jacocoTestReport // report is always generated after tests
+}
+
+jacoco {
+    toolVersion = "0.8.5"
+    reportsDir = file("$buildDir/customJacocoReportDir")
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.5
+            }
+        }
+        rule {
+            enabled = false
+            element = 'CLASS'
+            includes = ['pckg.*']
+            limit {
+                counter = 'LINE'
+                value = 'TOTALCOUNT'
+                maximum = 0.3
+            }
+        }
+    }
+}

@@ -1,0 +1,26 @@
+plugins {
+    id 'java'
+}
+
+group 'com.igor.learninggradle'
+version '0.0.1-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+
+    implementation files("$buildDir/classes") {
+        builtBy 'compile'
+    }
+}
+
+task compile {
+    doLast {
+        println 'compiling classes'
+    }
+}
+
+println 'configuring child2:grandchild1'

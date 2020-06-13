@@ -1,0 +1,761 @@
+import java.nio.file.Paths
+
+//add external jars to build script classpath
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:0.4.1'
+    }
+}
+
+plugins {
+    id 'org.springframework.boot' version '2.3.0.RELEASE'
+    id 'io.spring.dependency-management' version '1.0.9.RELEASE'
+
+    //this does not resolves to this project
+    id "org.myire.quill.java" version "2.4" apply false
+}
+
+println 'This is executed during the configuration phase.'
+
+//this plugin applies only to child1 project
+//or we can define plugins closure in child project
+subprojects {
+   if (name.startsWith('child-project1')) {
+        apply plugin: "org.myire.quill.java"
+    }
+}
+
+//Gradle features like the allprojects and subprojects keywords
+//automatically cause your projects to be coupled.
+
+allprojects {
+    //tutaj pluginy ktore beda we wszystkich projektach
+    apply plugin: 'java'
+    apply plugin: 'org.springframework.boot'
+    dependencies {
+        testCompile group: 'junit', name: 'junit', version: '4.12'
+    }
+
+    //after project is evaluated hook (extra properties are set after evaludation of project)
+    afterEvaluate { project ->
+        if (true) { //project.hasTests properry e.g.
+            println "Adding test task to $project"
+            project.task('test2') {
+                doLast {
+                    println "Running tests for $project"
+                }
+            }
+        }
+    }
+}
+
+//receive notification when any project is evaluated
+gradle.afterProject { project ->
+    if (project.state.failure) {
+        println "Evaluation of $project FAILED"
+    } else {
+        println "Evaluation of $project succeeded"
+    }
+}
+
+//another hooks
+gradle.taskGraph.beforeTask { Task task ->
+    println "executing $task ... ;p"
+}
+gradle.taskGraph.afterTask { Task task, TaskState state ->
+    if (state.failure) {
+        println "FAILED :("
+    }
+    else {
+        println "done :)"
+    }
+}
+
+tasks.whenTaskAdded { task ->
+    println(task.name + " added")
+}
+
+//project(':child-project1') { //tu mozliwe definiowanie zaleznosci bez istnienia build.gradle w drugim projekcie
+//    dependencies {
+//        compile project(':learning-gradle') //ze ten child zależy od tego projektu ale przetestuj to
+//    }
+//}
+
+group = 'com.igor.learninggradle'
+version = '0.0.1-SNAPSHOT'
+
+sourceCompatibility = '12'
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation('org.springframework.boot:spring-boot-starter-test') {
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+
+//getting started
+
+//default task is siemano
+defaultTasks 'siemano'
+
+task siemano {
+    println 'this is task'
+}
+
+siemano.description "this is a description of siemano task"
+siemano { println 'cos wiecej' }//configuration phase
+siemano.doLast { println 'in doLast()' }
+
+task siemano2 {
+    ext.myOwnProperty = "Super!"
+    description 'another way of describing'
+    doFirst {
+        println 'First!'
+    }
+    doLast {
+        println 'Last!'
+        println siemano2.myOwnProperty
+    }
+}
+
+siemano2.doFirst {
+    println 'Firstier!'
+}
+
+// Phases
+// Init phase - multiproject builds
+// Configuration phase - executes before task action
+// Execution phase - task action executed
+
+siemano2.dependsOn(siemano)
+
+//variables
+def projectVersion = "2.0" //def is scoped on this file not in multiproject
+project.ext.extVersion = "2.0ext" //external variable
+
+ext {
+    extraProp1 = 'ext1'
+    extraProp2 = 'ext2'
+    extraProp3 = 'ext3'
+}
+
+task printStandardProperties {
+    println project.name
+    println project.path
+    println project.description
+    println projectDir
+    println buildDir
+    println group
+    println version
+
+    println extraProp2
+}
+
+siemano2.doLast {
+    println "project version is $projectVersion"
+    println "external version is $extVersion"
+}
+
+//dependency
+task taskA { doLast { println "taskA" } }
+task taskB { doLast { println "taskB" } }
+task taskC { doLast { println "taskC" } }
+task taskD { doLast { println "taskD" } }
+task taskE { doLast { println "taskE" } }
+task taskF { doLast { println "taskF" } }
+
+//random order ;/
+taskA.dependsOn taskB
+taskA.dependsOn taskC, taskD
+
+taskC.dependsOn taskE
+taskD.dependsOn taskE
+
+//must run after - must run after task
+//should run after - must run after task but ignores circular
+//finalizedBy - inverted dependency
+
+taskB.mustRunAfter taskC
+
+//typed taksks (jar copy built in tasks)
+//na gradle jest wiecej tasków
+
+task copyFile(type: Copy) { //tak jakby używa/rozszerza
+    from 'src'
+    into 'desc' //a tu konfigurujemy ten Copy task
+}
+
+//ze specyfikacją
+
+def contentSpec = copySpec {
+//    exclude 'duda.pis'
+    exclude { it.file.name.startsWith('IMG') } //iteracja po plikach
+    from 'src'
+}
+
+task copyImages2(type: Copy) {
+    with contentSpec
+    into 'dest'
+    expand([variableName: 'value']) //zastepuje placeholdery aka templating
+}
+
+//ways of providing from
+task anotherCopyTask (type: Copy) {
+    // Copy everything under src/main/webapp
+    from 'src/main/webapp'
+    // Copy a single file
+    from 'src/staging/index.html'
+    // Copy the output of a task
+   // from copyTask
+    // Copy the output of a task using Task outputs explicitly.
+    //from copyTaskWithPatterns.outputs
+    // Copy the contents of a Zip file
+    from zipTree('src/main/assets.zip')
+    // Determine the destination directory later
+    into { getDestDir() }
+
+    rename { String fileName ->
+        fileName.toUpperCase()
+    }
+}
+
+
+//konfigurujemy surceSet (src)
+
+sourceSets {
+    main {
+        java {anotherCopyTask
+            srcDir 'src/main/cocinnego'
+        }
+        resources {
+            srcDir 'src/main/resources'
+        }
+    }
+}
+
+//print properties
+// ./gradlew -q -PcommandLineProjectProp=commandLineProjectPropValue -Dorg.gradle.project.systemProjectProp=systemPropertyValue printProps
+task printProps {
+    doLast {
+        println commandLineProjectProp
+        println gradlePropertiesProp
+        println systemProjectProp
+        println System.properties['system']
+    }
+}
+
+
+//JavaCompile task JVM options
+tasks.withType(JavaCompile) {
+    options.compilerArgs += ['-Xdoclint:none']
+}
+
+
+//hook
+gradle.taskGraph.whenReady { taskGraph ->
+    if (taskGraph.hasTask(":siemano")) {
+        println 'odpalamy siemano'
+    }
+}
+
+//get task ref by path
+println(tasks.getByPath(":child-project1:someTask").path)
+
+//another way of configuring tasks
+tasks.create('anotherWay')
+
+anotherWay.doLast {
+    println 'another!'
+}
+
+
+//dependencies between projects' tasks
+project(':child-project1') {
+    child1Task1.dependsOn ':child-project2:child2Task1'
+}
+
+//define task in child-project1
+project('child-project1') {
+    task taskFromParent {
+        doLast {
+            println 'this is task defined in parent'
+        }
+    }
+}
+
+//lazy block
+task printChildren {
+    doLast {
+        println 'up there are my precious children'
+    }
+}
+
+printChildren.dependsOn {
+    tasks.findAll {
+        task -> task.name.startsWith('child')
+    }
+}
+
+
+//skipping tasks
+task ifOnlyYou {
+    doLast {
+        println 'if only youuu!'
+        println 'if only youuu!'
+        println 'if only youuu!'
+    }
+}
+
+project.ext.skipIfOnlyYou = true
+
+ifOnlyYou.onlyIf {
+//    !project.hasProperty('skipIfOnlyYou')
+    !skipIfOnlyYou
+}
+
+//StopExecutionException stops current task and goes to another one
+task holaHola {
+    doLast {
+        println 'Aloha'
+    }
+}
+
+holaHola {
+    doFirst {
+        throw new StopExecutionException()
+    }
+}
+
+
+//disabling tasks
+task disableMe {
+    doLast {
+        println 'This should not be printed if the task is disabled.'
+    }
+}
+disableMe.enabled = false
+
+
+//setting tasks timeout
+task hangingTask() {
+    doLast {
+        Thread.sleep(100000)
+    }
+    timeout = Duration.ofMillis(500)
+}
+
+class ProcessTemplates extends DefaultTask {
+    private Integer left
+    private Integer right
+
+    @Input
+    Integer getLeft() {
+        return this.left;
+    }
+
+    @Input
+    Integer getRight() {
+        return right
+    }
+
+    void setLeft(final Integer left) {
+        this.left = left
+    }
+
+    void setRight(final Integer right) {
+        this.right = right
+    }
+
+    @TaskAction
+    void processTemplates() {
+        println left * right
+    }
+
+}
+
+task multiplySomething(type: ProcessTemplates) {
+    left = 5
+    right = 11
+
+    doFirst {
+        println getInputs()//gets inputs ad-hoc
+    }
+}
+
+task pingSomeone {
+    description = 'pings someone'
+    doLast {
+        println 'Ping!!!'
+    }
+}
+
+//adding some task rules
+tasks.addRule("Pattern: ping<ID>") { String taskName ->
+    if (taskName.startsWith("ping")) {
+        task(taskName) {
+            doLast {
+                println "Pinging: " + (taskName - 'ping')
+            }
+        }
+    }
+}
+
+
+task cleanBuffers {
+    doLast {
+        println 'Cleaning...'
+    }
+}
+
+pingSomeone.finalizedBy cleanBuffers
+
+
+task printAllTaskNames {
+    doLast {
+        tasks.each {
+            task -> println task.name
+        }
+    }
+}
+
+//zip unzip
+task zippClass(type: Zip) {
+    archiveFileName = "my-archive.zip"
+    destinationDirectory = file("$buildDir/dist")
+
+    from "$projectDir/src/main/cocinnego"
+}
+
+task unpackFiles(type: Copy) {
+    from zipTree("$buildDir/dist/my-archive.zip")//tarTree()...
+    into "$buildDir/resources"
+}
+
+//make a fat JAR from other jar dependencies
+task uberJar(type: Jar) {
+    archiveClassifier = 'uber'
+    from sourceSets.main.output
+    dependsOn configurations.runtimeClasspath
+    from {
+        configurations.runtimeClasspath
+                .findAll { it.name.endsWith('jar') }
+                .collect { zipTree(it) }
+    }
+}
+
+//create directory
+task ensureDirectory {
+    doLast {
+        mkdir "$projectDir/src/main/cocinnego/images"
+    }
+}
+
+//use ant to move files
+task moveReports {
+    doLast {
+        ant.move file: "${buildDir}/dist/",
+                todir: "${buildDir}/toArchive"
+    }
+}
+
+//delete files
+task deleteArchives(type: Delete) {
+    delete "${buildDir}/toArchive"
+}
+
+//delete specific patterns
+task cleanTempFiles(type: Delete) {
+    delete fileTree("src").matching {
+        include "**/*.tmp"
+    }
+}
+
+//ways of getting a file properly:
+// Using a relative path
+File configFile = file('src/config.xml')
+// Using an absolute path
+configFile = file(configFile.absolutePath)
+// Using a File object with a relative path
+configFile = file(new File('src/config.xml'))
+// Using a java.nio.file.Path object with a relative path
+configFile = file(Paths.get('src', 'config.xml'))
+// Using an absolute java.nio.file.Path object
+configFile = file(Paths.get(System.getProperty('user.home')).resolve('globalconfig.xml'))
+// use root ir in child projects
+configFile = file("$rootDir/shared/config.xml")
+
+
+//getting file collection
+FileCollection collection = layout.files(
+        "$projectDir/src/main/cocinnego/SomeClass.java",
+        "$projectDir/src/main/java/com/igor/learninggradle/LearningGradleApplication.java"
+)
+
+
+task lazyGatherFileList {
+    doLast {
+        File srcDir
+        // Create a file collection using a closure
+        // lazy creation is by passing a closure to the files()1
+        collection = layout.files { srcDir.listFiles() }
+        srcDir = file('src')
+        println "Contents of $srcDir.name"
+        collection.collect { relativePath(it) }.sort().each { println it }
+        srcDir = file('src2')
+        println "Contents of $srcDir.name"
+        collection.collect { relativePath(it) }.sort().each { println it }
+    }
+}
+
+task collections {
+    doLast {
+        // Iterate over the files in the collection
+        collection.each { File file ->
+            println file.name
+        }
+        // Convert the collection to various types
+        Set set = collection.files
+        Set set2 = collection as Set
+        List list = collection as List
+        String path = collection.asPath
+        File file = collection.singleFile
+        // Add and subtract collections
+        def union = collection + layout.files('src/file2.txt')
+        def difference = collection - layout.files('src/file2.txt')
+    }
+}
+
+task filterCollection {
+    doLast {
+        FileCollection textFiles = collection.filter { File f ->
+            f.name.endsWith(".txt")
+        }
+        //If collection changes at any time, either by adding or removing files from itself, then textFiles will
+        //immediately reflect the change because it is also a live collection.
+    }
+}
+
+
+//FileTrees A file tree is a file collection that retains the directory structure of the files it contains and has the type FileTree.
+task creatingFileTree {
+    doLast {
+        // Create a file tree with a base directory
+        ConfigurableFileTree tree = fileTree(dir: 'src/main')
+
+        // Add include and exclude patterns to the tree
+        tree.include '**/*.java'
+
+        println tree.files
+
+        // Create a tree using closure
+        tree = fileTree('src') {
+            include '**/*.java'
+        }
+
+        // Iterate over the contents of a tree
+        println 'Iterating:'
+        tree.each {File file ->
+            println file
+        }
+
+        // Filter a tree
+        FileTree filtered = tree.matching {
+            include '**/LearningGradleApplication*'
+        }
+
+        // Add trees together
+        FileTree sum = tree + fileTree(dir: 'src/test')
+
+        // Visit the elements of the tree
+        println 'Visiting:'
+        tree.visit {element ->
+            println "$element.relativePath => $element.file"
+        }
+
+        // Create a ZIP file tree using path
+        FileTree zip = zipTree('someFile.zip')
+        // Create a TAR file tree using path
+        FileTree tar = tarTree('someFile.tar')
+    }
+}
+
+//using copy in tasks
+task copyMethod {
+    doLast {
+        copy {
+            from 'src/main/webapp'
+            into "$buildDir/explodedWar"
+            include '**/*.html'
+            include '**/*.jsp'
+        }
+    }
+}
+
+//Sync task:
+//copies the source files into the destination directory and then removes any files from the destination directory which it did not copy
+task libs(type: Sync) {
+    from configurations.runtime
+    into "$buildDir/libs"
+}
+
+task phasePrinter {
+    println 'This is also executed during the configuration phase.'
+    doLast {
+        println 'This is executed during the execution phase.'
+    }
+}
+
+allprojects {
+    task helloall {
+        doLast {
+            println "helloall!"
+        }
+    }
+}
+
+//another way of configuring projects
+configure(subprojects.findAll {it.name != 'grandchild2'}) {
+    helloall {
+        doLast {
+            println '- I love not being such a grandchild2.'
+        }
+    }
+}
+
+//Two projects are said to be decoupled if they do not directly access each other’s project model.
+//Decoupled projects may only interact in terms of declared dependencies: project dependencies
+//and/or task dependencies. Any other form of project interaction (i.e. by modifying another project
+//object or by reading a value from another project object) causes the projects to be coupled
+
+//BuildNeeded task performs build task and tests all the projects from the project lib dependencies
+//BuildDependents builds projects that are dependent to this
+
+
+//variables can be accessed via project.layout.buildDirectory.dir('generated-source')
+
+
+//task that ones output is anothers input
+class Producer extends DefaultTask {
+    @OutputFile
+    final RegularFileProperty outputFile = project.objects.fileProperty()
+
+    @TaskAction
+    void produce() {
+        String message = 'Hello, World!'
+        def output = outputFile.get().asFile
+        output.text = message
+        logger.quiet("Wrote '${message}' to ${output}")
+    }
+}
+
+class Consumer extends DefaultTask {
+    @InputFile
+    final RegularFileProperty inputFile = project.objects.fileProperty()
+
+    @TaskAction
+    void consume() {
+        def input = inputFile.get().asFile
+        def message = input.text
+        logger.quiet("Read '${message}' from ${input}")
+    }
+}
+
+def producer = tasks.register("producer", Producer)
+def consumer = tasks.register("consumer", Consumer)
+
+// Don't need to add a task dependency to the consumer task. This is
+// automatically added
+consumer.configure {
+    inputFile = producer.flatMap { it.outputFile }
+}
+
+// Set values for the producer lazily
+// Don't need to update the consumer.inputFile property. This is
+//automatically updated as producer.outputFile changes
+producer.configure {
+    outputFile = layout.buildDirectory.file('file.txt')
+}
+
+//same with collections
+
+class Producer2 extends DefaultTask {
+    @OutputFile
+    final RegularFileProperty outputFile = project.objects.fileProperty()
+
+    @TaskAction
+    void produce() {
+        String message = 'Hello, World!'
+        def output = outputFile.get().asFile
+        output.text = message
+        logger.quiet("Wrote '${message}' to ${output}")
+    }
+}
+
+class Consumer2 extends DefaultTask {
+    @InputFiles
+    final ListProperty<RegularFile> inputFiles = project.objects.
+            listProperty(RegularFile)
+
+    @TaskAction
+    void consume() {
+        inputFiles.get().each { inputFile ->
+            def input = inputFile.asFile
+            def message = input.text
+            logger.quiet("Read '${message}' from ${input}")
+        }
+    }
+}
+
+task producerOne(type: Producer2)
+task producerTwo(type: Producer2)
+task consumer2(type: Consumer2)
+
+// Connect the producer task outputs to the consumer task input
+// Don't need to add task dependencies to the consumer task. These are
+//automatically added
+consumer2.inputFiles.add(producerOne.outputFile)
+consumer2.inputFiles.add(producerTwo.outputFile)
+
+// Set values for the producer tasks lazily
+// Don't need to update the consumer.inputFiles property. This is
+//automatically updated as producer.outputFile changes
+producerOne.outputFile = layout.buildDirectory.file('one.txt')
+producerTwo.outputFile = layout.buildDirectory.file('two.txt')
+
+
+//set default property values via convention() method
+
+task show {
+    doLast {
+        def property = objects.property(String)
+        // Set a convention
+        property.convention("convention 1")
+        println("value = " + property.get())
+        // Can replace the convention
+        property.convention("convention 2")
+        println("value = " + property.get())
+        property.set("value")
+        // Once a value is set, the convention is ignored
+        property.convention("ignored convention")
+        println("value = " + property.get())
+    }
+}

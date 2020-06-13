@@ -1,0 +1,184 @@
+Annotation Expected property type Description
+@Input Any Serializable type A simple input value
+@InputFile File* A single input file (not
+directory)
+@InputDirectory File* A single input directory (not
+file)
+Annotation Expected property type Description
+@InputFiles Iterable<File>* An iterable of input files and
+directories
+@Classpath Iterable<File>* An iterable of input files and
+directories that represent a
+Java classpath. This allows the
+task to ignore irrelevant
+changes to the property, such as
+different names for the same
+files. It is similar to annotating
+the property
+@PathSensitive(RELATIVE) but it
+will ignore the names of JAR
+files directly added to the
+classpath, and it will consider
+changes in the order of the files
+as a change in the classpath.
+Gradle will inspect the contents
+of jar files on the classpath and
+ignore changes that do not
+affect the semantics of the
+classpath (such as file dates and
+entry order). See also Using the
+classpath annotations.
+Note: The @Classpath
+annotation was introduced in
+Gradle 3.2. To stay compatible
+with earlier Gradle versions,
+classpath properties should also
+be annotated with @InputFiles.
+Annotation Expected property type Description
+@CompileClasspath Iterable<File>* An iterable of input files and
+directories that represent a
+Java compile classpath. This
+allows the task to ignore
+irrelevant changes that do not
+affect the API of the classes in
+classpath. See also Using the
+classpath annotations.
+The following kinds of changes
+to the classpath will be ignored:
+• Changes to the path of jar or
+top level directories.
+• Changes to timestamps and
+the order of entries in Jars.
+• Changes to resources and
+Jar manifests, including
+adding or removing
+resources.
+• Changes to private class
+elements, such as private
+fields, methods and inner
+classes.
+• Changes to code, such as
+method bodies, static
+initializers and field
+initializers (except for
+constants).
+• Changes to debug
+information, for example
+when a change to a
+comment affects the line
+numbers in class debug
+information.
+• Changes to directories,
+including directory entries
+in Jars.
+NOTE
+The
+@CompileClasspa
+th annotation
+was introduced
+in Gradle 3.4. To
+stay compatible
+with Gradle 3.3
+and 3.2, compile
+classpath
+properties
+should also be
+annotated with
+@Classpath. For
+compatibility
+with Gradle
+versions before
+3.2 the property
+should also be
+annotated with
+@InputFiles.
+Annotation Expected property type Description
+@OutputFile File* A single output file (not
+directory)
+@OutputDirectory File* A single output directory (not
+file)
+@OutputFiles Map<String, File>** or
+Iterable<File>*
+An iterable or map of output
+files. Using a file tree turns
+caching off for the task.
+@OutputDirectories Map<String, File>** or
+Iterable<File>*
+An iterable of output
+directories. Using a file tree
+turns caching off for the task.
+@Destroys File or Iterable<File>* Specifies one or more files that
+are removed by this task. Note
+that a task can define either
+inputs/outputs or destroyables,
+but not both.
+@LocalState File or Iterable<File>* Specifies one or more files that
+represent the local state of the
+task. These files are removed
+when the task is loaded from
+cache.
+@Nested Any custom type A custom type that may not
+implement Serializable but
+does have at least one field or
+property marked with one of
+the annotations in this table. It
+could even be another @Nested.
+@Console Any type Indicates that the property is
+neither an input nor an output.
+It simply affects the console
+output of the task in some way,
+such as increasing or
+decreasing the verbosity of the
+task.
+@Internal Any type Indicates that the property is
+used internally but is neither
+an input nor an output.
+Annotation Expected property type Description
+@ReplacedBy Any type Indicates that the property has
+been replaced by another and
+should be ignored as an input
+or output.
+@SkipWhenEmpty File* Used with @InputFiles or
+@InputDirectory to tell Gradle to
+skip the task if the
+corresponding files or directory
+are empty, along with all other
+input files declared with this
+annotation. Tasks that have
+been skipped due to all of their
+input files that were declared
+with this annotation being
+empty will result in a distinct
+“no source” outcome. For
+example, NO-SOURCE will be
+emitted in the console output.
+Implies @Incremental.
+@Incremental Provider<FileSystemLocation>
+or FileCollection
+Used with @InputFiles or
+@InputDirectory to instruct
+Gradle to track changes to the
+annotated file property, so the
+changes can be queried via
+@InputChanges.getFileChanges().
+Required for incremental tasks.
+@Optional Any type Used with any of the property
+type annotations listed in the
+Optional API documentation.
+This annotation disables
+validation checks on the
+corresponding property. See the
+section on validation for more
+details.
+Annotation Expected property type Description
+@PathSensitive File* Used with any input file
+property to tell Gradle to only
+consider the given part of the
+file paths as important. For
+example, if a property is
+annotated with
+@PathSensitive(PathSensitivity
+.NAME_ONLY), then moving the
+files around without changing
+their contents will not make the
+task out-of-date.
